@@ -1,0 +1,1561 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Data Timbangan Masuk</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: '#3b82f6',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- html2canvas Library untuk Ekspor PNG -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Courier+Prime:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .mono-font {
+            font-family: 'Courier Prime', monospace;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+        }
+        .dark ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 4px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #475569;
+        }
+
+        /* Stepper Active & Completed States */
+        .step-active {
+            border-color: #3b82f6 !important;
+            background-color: rgba(59, 130, 246, 0.15) !important;
+            color: #3b82f6 !important;
+        }
+        .dark .step-active {
+            background-color: #1e3a8a !important;
+            color: #60a5fa !important;
+        }
+
+        .step-completed {
+            border-color: #10b981 !important;
+            background-color: rgba(16, 185, 129, 0.15) !important;
+            color: #10b981 !important;
+        }
+        .dark .step-completed {
+            background-color: #064e3b !important;
+            color: #34d399 !important;
+        }
+
+        /* Styles for Printable A4 Sheet */
+        @media print {
+            body {
+                background-color: #ffffff !important;
+                color: #000000 !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .no-print, #splash-screen {
+                display: none !important;
+            }
+            .print-only {
+                display: block !important;
+            }
+            #app-container {
+                max-width: 100% !important;
+                width: 100% !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                box-shadow: none !important;
+            }
+            .page-a4 {
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 8mm 10mm !important;
+                box-shadow: none !important;
+                border: none !important;
+                background: #ffffff !important;
+                color: #000000 !important;
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
+            }
+            @page {
+                size: A4 portrait;
+                margin: 0;
+            }
+            input, textarea {
+                border: none !important;
+                background: transparent !important;
+                color: #000000 !important;
+            }
+        }
+
+        /* Signature Canvas Touch Action */
+        canvas {
+            touch-action: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen pb-12 transition-colors duration-300">
+
+    <!-- ========================================== -->
+    <!-- FITUR 6: OPENING / SPLASH SCREEN           -->
+    <!-- ========================================== -->
+    <div id="splash-screen" class="fixed inset-0 bg-slate-900 dark:bg-slate-950 z-[100] flex flex-col items-center justify-center p-6 text-center transition-opacity duration-700">
+        <div class="relative mb-6">
+            <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-slate-800 border-2 border-amber-500/40 p-2 shadow-2xl flex items-center justify-center animate-pulse">
+                <img id="splashLogo" src="" alt="Logo Perusahaan" class="max-h-full max-w-full object-contain">
+            </div>
+        </div>
+        <h1 id="splashTitle" class="text-2xl sm:text-3xl font-extrabold text-slate-100 mb-2 uppercase tracking-wide">CV. KARDIKA KRESNA</h1>
+        <p id="splashSubTitle" class="text-xs sm:text-sm text-slate-400 max-w-md mb-8">PRODUSEN BENIH TANAMAN PANGAN & HORTIKULTURA</p>
+        
+        <button onclick="dismissSplash()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-8 py-3 rounded-xl shadow-lg shadow-blue-600/30 transition transform hover:scale-105 flex items-center gap-2">
+            <span>Masuk ke Aplikasi</span>
+            <i class="fa-solid fa-arrow-right"></i>
+        </button>
+    </div>
+
+    <!-- Top Navigation Header (Screen Only) -->
+    <header class="no-print bg-white border-b border-slate-200 dark:bg-slate-900 dark:border-slate-800 sticky top-0 z-50 px-4 py-3 shadow-sm transition-colors duration-300">
+        <div class="max-w-4xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 border border-amber-500/30 flex items-center justify-center p-1 cursor-pointer" onclick="openCustomLogoModal()">
+                    <img id="headerLogo" src="" alt="Logo" class="max-h-full object-contain">
+                </div>
+                <div>
+                    <h1 class="text-base font-bold text-slate-800 dark:text-slate-100 leading-tight" id="headerTitle">CV. KARDIKA KRESNA</h1>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Sistem Pencatatan Timbangan Masuk</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-1.5 sm:gap-2">
+                <!-- FITUR 5: DARK/LIGHT MODE TOGGLE -->
+                <button onclick="toggleDarkMode()" id="themeToggleBtn" title="Ubah Mode Tampilan" class="text-xs bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 p-2 sm:px-3 sm:py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-moon text-amber-500 dark:hidden"></i>
+                    <i class="fa-solid fa-sun text-amber-400 hidden dark:inline"></i>
+                    <span class="hidden sm:inline text-[11px] font-medium" id="themeTextLabel">Dark</span>
+                </button>
+
+                <!-- FITUR 3: RIWAYAT -->
+                <button onclick="openHistoryModal()" class="text-xs bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-blue-600 dark:text-blue-400 p-2 sm:px-3 sm:py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <span class="hidden sm:inline">Riwayat</span>
+                </button>
+
+                <!-- UBAH LOGO -->
+                <button onclick="openCustomLogoModal()" class="text-xs bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 p-2 sm:px-3 sm:py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-image text-amber-500"></i>
+                    <span class="hidden sm:inline">Pengaturan</span>
+                </button>
+
+                <!-- RESET FORM -->
+                <button onclick="resetAllForm()" class="text-xs bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-300 p-2 sm:px-3 sm:py-1.5 rounded-lg border border-rose-200 dark:border-rose-800/50 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <span class="hidden sm:inline">Reset</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-4xl mx-auto px-3 sm:px-4 pt-4" id="app-container">
+
+        <!-- Stepper Wizard Progress Bar (Screen Only) -->
+        <div class="no-print mb-6">
+            <div class="grid grid-cols-4 gap-1.5 sm:gap-3 text-center">
+                <!-- Step 1 -->
+                <button onclick="goToStep(1)" id="step-btn-1" class="step-active flex flex-col items-center p-2 sm:p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition">
+                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm mb-1 bg-slate-100 dark:bg-slate-800">1</div>
+                    <span class="text-[10px] sm:text-xs font-medium line-clamp-1">Identitas</span>
+                </button>
+                <!-- Step 2 -->
+                <button onclick="goToStep(2)" id="step-btn-2" class="flex flex-col items-center p-2 sm:p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-400 transition">
+                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm mb-1 bg-slate-100 dark:bg-slate-800">2</div>
+                    <span class="text-[10px] sm:text-xs font-medium line-clamp-1">Timbangan</span>
+                </button>
+                <!-- Step 3 -->
+                <button onclick="goToStep(3)" id="step-btn-3" class="flex flex-col items-center p-2 sm:p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-400 transition">
+                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm mb-1 bg-slate-100 dark:bg-slate-800">3</div>
+                    <span class="text-[10px] sm:text-xs font-medium line-clamp-1">Tanda Tangan</span>
+                </button>
+                <!-- Step 4 -->
+                <button onclick="goToStep(4)" id="step-btn-4" class="flex flex-col items-center p-2 sm:p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-400 transition">
+                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm mb-1 bg-slate-100 dark:bg-slate-800">4</div>
+                    <span class="text-[10px] sm:text-xs font-medium line-clamp-1">Cetak / Export</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- KAMAR 1: PENGISIAN IDENTITAS BARANG MASUK -->
+        <!-- ========================================== -->
+        <section id="kamar-1" class="no-print bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl transition-colors duration-300">
+            <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4 mb-5">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-500 dark:text-blue-400 flex items-center justify-center font-bold">1</div>
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100">Tahap 1: Identitas Barang Masuk</h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Lengkapi data pengirim dan spesifikasi komoditas</p>
+                    </div>
+                </div>
+            </div>
+
+            <form onsubmit="event.preventDefault(); goToStep(2);" class="space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- FITUR 6: AUTO INCREMENT FORM NUMBERING -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                            Nomor Form <span class="text-blue-500 text-[10px] lowercase font-normal">(Otomatis/Dapat Diedit)</span>
+                        </label>
+                        <input type="text" id="in_no_form" oninput="saveDraft()" placeholder="Contoh: FORM-0001" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500">
+                    </div>
+                    <!-- FITUR 7: AUTO FORMATTING TANGGAL INDONESIA -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Tanggal</label>
+                        <input type="text" id="in_tanggal" oninput="saveDraft()" placeholder="Contoh: Rabu, 28 Oktober 2026" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Dari / Pengirim</label>
+                        <input type="text" id="in_dari" oninput="saveDraft()" placeholder="Nama pengirim / petani" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Alamat</label>
+                        <input type="text" id="in_alamat" oninput="saveDraft()" placeholder="Lokasi asal barang" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Komoditas / Varietas</label>
+                        <input type="text" id="in_varietas" oninput="saveDraft()" placeholder="Contoh: INPARI 32" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Sejumlah (Karung)</label>
+                        <input type="number" id="in_sejumlah" oninput="saveDraft()" placeholder="0" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Kadar Air (%)</label>
+                        <input type="text" id="in_kadar_air" oninput="saveDraft()" placeholder="Contoh: 27" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Nomor Induk</label>
+                        <input type="text" id="in_no_induk" oninput="saveDraft()" placeholder="-" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Nomor Blok</label>
+                        <input type="text" id="in_no_blok" oninput="saveDraft()" placeholder="-" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Alat Panen</label>
+                        <input type="text" id="in_alat_panen" oninput="saveDraft()" placeholder="-" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">No. Polisi</label>
+                        <input type="text" id="in_no_pol" oninput="saveDraft()" placeholder="Contoh: AD 1234 XX" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div class="pt-6 flex justify-end">
+                    <button type="submit" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30">
+                        <span>Lanjut ke Pencatatan Nota Timbang</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- KAMAR 2: PENCATATAN NOTA TIMBANG (CALCNOTE)-->
+        <!-- ========================================== -->
+        <section id="kamar-2" class="no-print hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl transition-colors duration-300">
+            <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4 mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-500 dark:text-blue-400 flex items-center justify-center font-bold">2</div>
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100">Tahap 2: Pencatatan Nota Timbang</h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Pilih mode input cepat CalcNote atau Grid Timbangan</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <span class="text-xs text-slate-500 dark:text-slate-400 block">Total Berat</span>
+                    <span id="grandTotalDisplay1" class="text-xl font-extrabold text-amber-500 dark:text-amber-400 mono-font">0 Kg</span>
+                </div>
+            </div>
+
+            <!-- Tab Mode Selector -->
+            <div class="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800 mb-4">
+                <button onclick="switchInputMode('calcnote')" id="btn-mode-calcnote" class="flex-1 py-2 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-2 bg-blue-600 text-white shadow">
+                    <i class="fa-solid fa-calculator"></i> Mode Input CalcNote (Cepat HP)
+                </button>
+                <button onclick="switchInputMode('grid')" id="btn-mode-grid" class="flex-1 py-2 rounded-lg text-xs font-semibold text-slate-500 dark:text-slate-400 transition flex items-center justify-center gap-2 hover:text-slate-800 dark:hover:text-slate-200">
+                    <i class="fa-solid fa-table-cells"></i> Mode Form Grid Matrix (10x10)
+                </button>
+            </div>
+
+            <!-- MODE 1: CalcNote Fast Area -->
+            <div id="container-mode-calcnote" class="space-y-3">
+                <div class="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 text-xs text-amber-700 dark:text-amber-300 flex items-start gap-2">
+                    <i class="fa-solid fa-lightbulb mt-0.5 text-amber-500"></i>
+                    <div>
+                        <strong>Petunjuk Mode CalcNote:</strong> Ketik deretan angka berat timbangan pada tiap baris. Pisahkan angka dengan <strong>spasi</strong> atau <strong>tanda +</strong>. 
+                        <br><span class="opacity-85">Gunakan Enter untuk berpindah ke baris timbangan berikutnya (Baris 1, Baris 2, dst).</span>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3">
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Area Ketik Angka Timbangan:</label>
+                    <textarea id="calcNoteTextarea" rows="8" oninput="parseCalcNoteInput(); saveDraft();" placeholder="Baris 1: 188 194 190 187 193 191 191 191 190 186&#10;Baris 2: 188 126" class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-lg p-3 text-sm mono-font text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500 leading-relaxed"></textarea>
+                </div>
+
+                <!-- Preview Realtime Subtotal Baris -->
+                <div class="bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800/80 rounded-xl p-3">
+                    <h4 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Ringkasan Baris Otomatis:</h4>
+                    <div id="calcNotePreviewList" class="space-y-1 text-xs mono-font">
+                        <div class="text-slate-400 dark:text-slate-500 italic">Belum ada angka yang dimasukkan</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODE 2: Grid Matrix 10x10 Area -->
+            <div id="container-mode-grid" class="hidden space-y-3">
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-2">Isi angka langsung pada sel kolom (1 - 10) di setiap baris. Geser ke samping jika diperlukan.</p>
+                <div class="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950">
+                    <table class="w-full text-center text-xs border-collapse">
+                        <thead>
+                            <tr class="bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-b border-slate-300 dark:border-slate-700">
+                                <th class="p-2 border-r border-slate-300 dark:border-slate-700 w-8">NO</th>
+                                <th colspan="10" class="p-2 border-r border-slate-300 dark:border-slate-700">BERAT TIAP TIMBANGAN (1 - 10)</th>
+                                <th class="p-2 w-20">JUMLAH</th>
+                            </tr>
+                            <tr class="bg-slate-100 dark:bg-slate-850 text-slate-500 dark:text-slate-400 text-[10px] border-b border-slate-300 dark:border-slate-700">
+                                <th class="p-1 border-r border-slate-300 dark:border-slate-700">#</th>
+                                <script>
+                                    for(let c=1; c<=10; c++) document.write(`<th class="p-1 border-r border-slate-200 dark:border-slate-800 w-12">${c}</th>`);
+                                </script>
+                                <th class="p-1">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody id="gridMatrixBody" class="mono-font">
+                            <!-- JS generate rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="pt-6 flex items-center justify-between gap-3">
+                <button type="button" onclick="goToStep(1)" class="bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold px-5 py-2.5 rounded-xl transition flex items-center gap-2 text-sm">
+                    <i class="fa-solid fa-arrow-left"></i> Kembali
+                </button>
+                <button type="button" onclick="goToStep(3)" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 py-2.5 rounded-xl transition flex items-center gap-2 text-sm shadow-lg shadow-blue-600/30">
+                    <span>Lanjut ke Tanda Tangan</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- KAMAR 3: TANDA TANGAN PENGESAHAN           -->
+        <!-- ========================================== -->
+        <section id="kamar-3" class="no-print hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl transition-colors duration-300">
+            <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4 mb-5">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-500 dark:text-blue-400 flex items-center justify-center font-bold">3</div>
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100">Tahap 3: Tanda Tangan Pengesahan</h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Bubuhkan tanda tangan digital langsung pada layar</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3 Columns Digital Signatures Pad -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- FITUR 1: INDIKATOR VISUAL TTD - Penimbang Pad -->
+                <div class="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 flex flex-col items-center">
+                    <div class="flex items-center justify-between w-full mb-2">
+                        <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">Penimbang</span>
+                        <span id="badge-penimbang" class="text-[10px] bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400 px-2 py-0.5 rounded-full flex items-center gap-1 font-medium">
+                            <i class="fa-solid fa-circle text-[6px]"></i> Kosong
+                        </span>
+                    </div>
+                    <div class="relative w-full bg-white dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg overflow-hidden h-36">
+                        <canvas id="canvas-penimbang" class="w-full h-full cursor-crosshair"></canvas>
+                        <button onclick="clearSignature('penimbang')" type="button" class="absolute top-2 right-2 text-[10px] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-2 py-1 rounded border border-slate-300 dark:border-slate-700">Hapus</button>
+                    </div>
+                    <input type="text" id="name-penimbang" oninput="saveDraft()" placeholder="Nama Penimbang" class="mt-2 w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1.5 text-xs text-center text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500">
+                </div>
+
+                <!-- FITUR 1: INDIKATOR VISUAL TTD - Manager Pad -->
+                <div class="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 flex flex-col items-center">
+                    <div class="flex items-center justify-between w-full mb-2">
+                        <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">Mengetahui (Manager)</span>
+                        <span id="badge-manager" class="text-[10px] bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400 px-2 py-0.5 rounded-full flex items-center gap-1 font-medium">
+                            <i class="fa-solid fa-circle text-[6px]"></i> Kosong
+                        </span>
+                    </div>
+                    <div class="relative w-full bg-white dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg overflow-hidden h-36">
+                        <canvas id="canvas-manager" class="w-full h-full cursor-crosshair"></canvas>
+                        <button onclick="clearSignature('manager')" type="button" class="absolute top-2 right-2 text-[10px] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-2 py-1 rounded border border-slate-300 dark:border-slate-700">Hapus</button>
+                    </div>
+                    <input type="text" id="name-manager" oninput="saveDraft()" placeholder="Nama Manager" class="mt-2 w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1.5 text-xs text-center text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500">
+                </div>
+
+                <!-- FITUR 1: INDIKATOR VISUAL TTD - Penyerah Pad -->
+                <div class="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 flex flex-col items-center">
+                    <div class="flex items-center justify-between w-full mb-2">
+                        <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">Yang Menyerahkan</span>
+                        <span id="badge-penyerah" class="text-[10px] bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400 px-2 py-0.5 rounded-full flex items-center gap-1 font-medium">
+                            <i class="fa-solid fa-circle text-[6px]"></i> Kosong
+                        </span>
+                    </div>
+                    <div class="relative w-full bg-white dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg overflow-hidden h-36">
+                        <canvas id="canvas-penyerah" class="w-full h-full cursor-crosshair"></canvas>
+                        <button onclick="clearSignature('penyerah')" type="button" class="absolute top-2 right-2 text-[10px] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-2 py-1 rounded border border-slate-300 dark:border-slate-700">Hapus</button>
+                    </div>
+                    <input type="text" id="name-penyerah" oninput="saveDraft()" placeholder="Nama Penyerah" class="mt-2 w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded px-2.5 py-1.5 text-xs text-center text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500">
+                </div>
+            </div>
+
+            <div class="pt-6 flex items-center justify-between gap-3">
+                <button type="button" onclick="goToStep(2)" class="bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold px-5 py-2.5 rounded-xl transition flex items-center gap-2 text-sm">
+                    <i class="fa-solid fa-arrow-left"></i> Kembali
+                </button>
+                <button type="button" onclick="goToStep(4)" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 py-2.5 rounded-xl transition flex items-center gap-2 text-sm shadow-lg shadow-blue-600/30">
+                    <span>Pratinjau & Cetak Laporan</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- KAMAR 4: CETAK / PDF LAPORAN RESMI         -->
+        <!-- ========================================== -->
+        <section id="kamar-4" class="hidden">
+            
+            <!-- FITUR 4: ACTION TOOLBAR UNTUK EKSPOR BERBAGAI FORMAT -->
+            <div class="no-print bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 mb-6 shadow-xl flex flex-wrap items-center justify-between gap-3 transition-colors duration-300">
+                <div class="flex flex-wrap items-center gap-2">
+                    <button onclick="goToStep(3)" class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-pen-to-square"></i> Edit
+                    </button>
+                    
+                    <button onclick="saveCurrentTransaction()" class="bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/80 text-blue-600 dark:text-blue-300 text-xs font-semibold px-3 py-2 rounded-xl border border-blue-200 dark:border-blue-800/60 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-floppy-disk"></i> Simpan
+                    </button>
+
+                    <!-- EKSPOR PNG -->
+                    <button onclick="exportToPNG()" class="bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/80 text-amber-700 dark:text-amber-300 text-xs font-semibold px-3 py-2 rounded-xl border border-amber-200 dark:border-amber-800/60 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-file-image"></i> Gambar PNG
+                    </button>
+
+                    <!-- EKSPOR EXCEL -->
+                    <button onclick="exportToExcel()" class="bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/80 text-emerald-700 dark:text-emerald-300 text-xs font-semibold px-3 py-2 rounded-xl border border-emerald-200 dark:border-emerald-800/60 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-file-excel"></i> Excel
+                    </button>
+                </div>
+
+                <button onclick="window.print()" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold px-6 py-2.5 rounded-xl shadow-lg shadow-emerald-600/30 transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-print"></i>
+                    <span>Cetak / Save PDF (1 Halaman)</span>
+                </button>
+            </div>
+
+            <!-- PAPER A4 LAYOUT PRINT CONTAINER -->
+            <div id="printableArea" class="page-a4 bg-white text-black p-6 rounded-xl shadow-2xl border border-slate-200 mx-auto max-w-[210mm] text-[11px] leading-tight">
+                
+                <!-- HEADER NOTA FISIK -->
+                <div class="flex items-start justify-between border-b-2 border-black pb-3 mb-2">
+                    <div class="flex items-center gap-3">
+                        <img id="printLogo" src="" alt="Logo Perusahaan" class="h-14 w-14 object-contain">
+                        <div>
+                            <h2 id="printTitle" class="text-base font-extrabold tracking-tight uppercase">CV. KARDIKA KRESNA</h2>
+                            <p id="printSubTitle" class="text-[10px] font-semibold text-gray-700 uppercase">PRODUSEN BENIH TANAMAN PANGAN & HORTIKULTURA</p>
+                        </div>
+                    </div>
+                    <!-- REVISI: HANYA MENAMPILKAN NO. FORM -->
+                    <div class="text-right border border-black p-2 rounded min-w-[100px]">
+                        <div class="text-[10px] font-bold text-gray-800 uppercase">No. Form <span id="out_no_form">FORM-0001</span></div>
+                    </div>
+                </div>
+
+                <div class="text-center font-bold text-sm tracking-wide uppercase my-2 underline">DATA TIMBANGAN MASUK</div>
+
+                <!-- IDENTITAS 2 KOLOM DENGAN TITIK DUA RATA LURUS -->
+                <div class="grid grid-cols-2 gap-x-6 my-3 font-semibold text-[11px]">
+                    <!-- Kolom Kiri -->
+                    <div class="space-y-1">
+                        <div class="flex items-center">
+                            <span class="w-28 shrink-0">Tanggal</span>
+                            <span class="w-3 text-center">:</span>
+                            <span id="out_tanggal" class="font-normal border-b border-dotted border-gray-400 flex-1">-</span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="w-28 shrink-0">Dari</span>
+                            <span class="w-3 text-center">:</span>
+                            <span id="out_dari" class="font-normal border-b border-dotted border-gray-400 flex-1 uppercase">-</span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="w-28 shrink-0">Alamat</span>
+                            <span class="w-3 text-center">:</span>
+                            <span id="out_alamat" class="font-normal border-b border-dotted border-gray-400 flex-1 uppercase">-</span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="w-28 shrink-0">Komoditas/Varietas</span>
+                            <span class="w-3 text-center">:</span>
+                            <span id="out_varietas" class="font-normal border-b border-dotted border-gray-400 flex-1 uppercase">-</span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="w-28 shrink-0">Sejumlah</span>
+                            <span class="w-3 text-center">:</span>
+                            <span class="font-normal flex-1"><span id="out_sejumlah" class="border-b border-dotted border-gray-400 inline-block min-w-[40px] text-center">-</span> Karung</span>
+                        </div>
+                    </div>
+
+                    <!-- Kolom Kanan -->
+                    <div class="space-y-1">
+                        <div class="flex items-center">
+                            <span class="w-28 shrink-0">Kadar Air</span>
+                            <span class="w-3 text-center">:</span>
+                            <span class="font-normal flex-1"><span id="out_kadar_air" class="border-b border-dotted border-gray-400 inline-block min-w-[40px] text-center">-</span> %</span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="w-28 shrink-0">Nomor Induk</span>
+                            <span class="w-3 text-center">:</span>
+                            <span id="out_no_induk" class="font-normal border-b border-dotted border-gray-400 flex-1">-</span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="w-28 shrink-0">Nomor Blok</span>
+                            <span class="w-3 text-center">:</span>
+                            <span id="out_no_blok" class="font-normal border-b border-dotted border-gray-400 flex-1">-</span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="w-28 shrink-0">Alat Panen</span>
+                            <span class="w-3 text-center">:</span>
+                            <span id="out_alat_panen" class="font-normal border-b border-dotted border-gray-400 flex-1">-</span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="w-28 shrink-0">No. Pol</span>
+                            <span class="w-3 text-center">:</span>
+                            <span id="out_no_pol" class="font-normal border-b border-dotted border-gray-400 flex-1 uppercase">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TABEL TIMBANGAN 10x10 PRINT FISIK -->
+                <div class="my-3">
+                    <table class="w-full border-collapse border border-black text-center text-[10px] mono-font">
+                        <thead>
+                            <tr class="border-b border-black font-bold">
+                                <th class="border-r border-black p-1 w-7">NO.</th>
+                                <th colspan="10" class="border-r border-black p-1">BERAT TIAP TIMBANGAN</th>
+                                <th class="p-1 w-20">JUMLAH</th>
+                            </tr>
+                            <tr class="border-b border-black text-[9px]">
+                                <th class="border-r border-black p-0.5">#</th>
+                                <script>
+                                    for(let i=1; i<=10; i++) document.write(`<th class="border-r border-black p-0.5 w-8">${i}</th>`);
+                                </script>
+                                <th class="p-0.5">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody id="printTableBody">
+                            <!-- Printable Rows -->
+                        </tbody>
+                        <tfoot>
+                            <tr class="border-t-2 border-black font-bold text-xs bg-gray-50">
+                                <td colspan="11" class="border-r border-black p-1.5 text-right pr-4 tracking-wider">TOTAL</td>
+                                <td id="printGrandTotal" class="p-1.5 text-center text-sm">0</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <!-- TANDA TANGAN 3 KOLOM SEJAJAR HORIZONTAL -->
+                <div class="mt-6 pt-2 grid grid-cols-3 gap-2 text-center text-[10px]">
+                    <!-- Column 1 -->
+                    <div class="flex flex-col justify-between items-center h-28">
+                        <span class="font-semibold">Penimbang</span>
+                        <div class="h-16 flex items-center justify-center">
+                            <img id="img-sign-penimbang" class="max-h-full max-w-full hidden" alt="TTD Penimbang">
+                        </div>
+                        <span id="txt-sign-penimbang" class="font-bold border-b border-black inline-block min-w-[100px] pb-0.5">( ........................ )</span>
+                    </div>
+
+                    <!-- Column 2 -->
+                    <div class="flex flex-col justify-between items-center h-28">
+                        <span class="font-semibold">Mengetahui<br><span class="text-[9px] font-normal">Manager Processing</span></span>
+                        <div class="h-16 flex items-center justify-center">
+                            <img id="img-sign-manager" class="max-h-full max-w-full hidden" alt="TTD Manager">
+                        </div>
+                        <span id="txt-sign-manager" class="font-bold border-b border-black inline-block min-w-[100px] pb-0.5">( ........................ )</span>
+                    </div>
+
+                    <!-- Column 3 -->
+                    <div class="flex flex-col justify-between items-center h-28">
+                        <span class="font-semibold">Yang Menyertakan<br><span class="text-[9px] font-normal">Barang / Mengambil</span></span>
+                        <div class="h-16 flex items-center justify-center">
+                            <img id="img-sign-penyerah" class="max-h-full max-w-full hidden" alt="TTD Penyerah">
+                        </div>
+                        <span id="txt-sign-penyerah" class="font-bold border-b border-black inline-block min-w-[100px] pb-0.5">( ........................ )</span>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal Custom Logo & Nama Perusahaan -->
+    <div id="customLogoModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-3">
+                <h3 class="font-bold text-slate-800 dark:text-slate-100 text-sm">Pengaturan Logo & Perusahaan</h3>
+                <button onclick="closeCustomLogoModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-500 dark:text-slate-400 mb-1">Upload Gambar Logo Baru:</label>
+                    <input type="file" id="logoFileInput" accept="image/*" class="w-full text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2">
+                </div>
+                <div>
+                    <label class="block text-slate-500 dark:text-slate-400 mb-1">Nama Perusahaan:</label>
+                    <input type="text" id="cfg_company_name" value="CV. KARDIKA KRESNA" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100">
+                </div>
+                <div>
+                    <label class="block text-slate-500 dark:text-slate-400 mb-1">Sub-Header / Deskripsi:</label>
+                    <input type="text" id="cfg_company_sub" value="PRODUSEN BENIH TANAMAN PANGAN & HORTIKULTURA" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="saveCompanyConfig()" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-4 py-2 rounded-xl text-xs">Simpan Permanen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FITUR 3 & 4: MODAL RIWAYAT DENGAN FILTER PENCARIAN & BACKUP/RESTORE JSON -->
+    <div id="historyModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-2xl w-full p-5 shadow-2xl space-y-4">
+            
+            <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-3">
+                <h3 class="font-bold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left text-blue-500"></i>
+                    <span>Riwayat Transaksi Timbangan</span>
+                </h3>
+                <button onclick="closeHistoryModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <!-- FITUR 3: PENCARIAN INTERAKTIF -->
+            <div class="relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+                <input type="text" id="historySearchInput" oninput="filterHistory()" placeholder="Cari nama pengirim, varietas, tanggal, atau no. form..." class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl pl-9 pr-3.5 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500">
+            </div>
+
+            <!-- LIST ITEM RIWAYAT -->
+            <div id="historyListContainer" class="max-h-72 overflow-y-auto space-y-2 text-xs pr-1">
+                <!-- Dynamic List Items -->
+            </div>
+
+            <!-- FITUR 4: TOOLBAR BACKUP & RESTORE JSON -->
+            <div class="flex flex-wrap items-center justify-between border-t border-slate-200 dark:border-slate-800 pt-3 gap-2">
+                <div class="flex items-center gap-2">
+                    <button onclick="exportJSONBackup()" class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold px-3 py-1.5 rounded-lg text-[11px] flex items-center gap-1.5 border border-slate-300 dark:border-slate-700">
+                        <i class="fa-solid fa-download text-blue-500"></i> Backup JSON
+                    </button>
+                    <label class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold px-3 py-1.5 rounded-lg text-[11px] flex items-center gap-1.5 border border-slate-300 dark:border-slate-700 cursor-pointer">
+                        <i class="fa-solid fa-upload text-emerald-500"></i> Restore JSON
+                        <input type="file" id="jsonImportInput" accept=".json" onchange="importJSONBackup(event)" class="hidden">
+                    </label>
+                </div>
+
+                <button onclick="closeHistoryModal()" class="bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold px-4 py-1.5 rounded-xl text-xs">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT APP LOGIC -->
+    <script>
+        // Global State & Matrix Data (10x10)
+        let matrixData = Array(10).fill(null).map(() => Array(10).fill(''));
+        
+        const DEFAULT_LOGO = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='45' r='35' fill='none' stroke='%23d97706' stroke-width='6'/><text x='50' y='55' font-size='32' font-weight='bold' fill='%23d97706' text-anchor='middle'>K2</text><path d='M 20 80 Q 50 60 80 80' fill='none' stroke='%23d97706' stroke-width='6'/></svg>";
+        
+        let currentLogoDataUrl = DEFAULT_LOGO;
+        let currentStep = 1;
+        let currentLoadedId = null;
+
+        // Signature Pads Objects
+        const signaturePads = {};
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();          // FITUR 5: Mode Gelap/Terang
+            loadCompanyConfig();  // Company Logo & Profile
+            initGridMatrix();     // 10x10 Grid Init
+            initSignatures();     // FITUR 1: Signatures with Visual Badge
+            
+            // FITUR 2: Load Auto-save Draft or Fresh Form
+            if (!loadDraft()) {
+                initFreshForm();
+            }
+        });
+
+        // FITUR 5: DARK / LIGHT MODE CONTROLLER
+        function initTheme() {
+            const savedTheme = localStorage.getItem('k2_app_theme') || 'dark';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+                document.getElementById('themeTextLabel').textContent = 'Dark';
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.getElementById('themeTextLabel').textContent = 'Light';
+            }
+        }
+
+        function toggleDarkMode() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('k2_app_theme', isDark ? 'dark' : 'light');
+            document.getElementById('themeTextLabel').textContent = isDark ? 'Dark' : 'Light';
+        }
+
+        // DISMISS SPLASH SCREEN
+        function dismissSplash() {
+            const splash = document.getElementById('splash-screen');
+            splash.classList.add('opacity-0');
+            setTimeout(() => {
+                splash.classList.add('hidden');
+            }, 700);
+        }
+
+        // FITUR 6 & 7: INITIALIZE FRESH FORM WITH AUTO INCREMENT & INDONESIAN DATE
+        function initFreshForm() {
+            // Auto Format Tanggal Indonesia
+            const now = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('in_tanggal').value = now.toLocaleDateString('id-ID', options);
+
+            // Auto Increment Nomor Form
+            let formSeq = parseInt(localStorage.getItem('k2_form_sequence') || '1');
+            const formattedFormNo = 'FORM-' + String(formSeq).padStart(4, '0');
+            document.getElementById('in_no_form').value = formattedFormNo;
+        }
+
+        // FITUR 2: AUTOMATIC DRAFT MANAGEMENT (LOCALSTORAGE)
+        function saveDraft() {
+            const draft = {
+                fields: {
+                    no_form: document.getElementById('in_no_form').value,
+                    tanggal: document.getElementById('in_tanggal').value,
+                    dari: document.getElementById('in_dari').value,
+                    alamat: document.getElementById('in_alamat').value,
+                    varietas: document.getElementById('in_varietas').value,
+                    sejumlah: document.getElementById('in_sejumlah').value,
+                    kadar_air: document.getElementById('in_kadar_air').value,
+                    no_induk: document.getElementById('in_no_induk').value,
+                    no_blok: document.getElementById('in_no_blok').value,
+                    alat_panen: document.getElementById('in_alat_panen').value,
+                    no_pol: document.getElementById('in_no_pol').value,
+                    calc_text: document.getElementById('calcNoteTextarea').value,
+                    name_penimbang: document.getElementById('name-penimbang').value,
+                    name_manager: document.getElementById('name-manager').value,
+                    name_penyerah: document.getElementById('name-penyerah').value
+                },
+                matrixData,
+                currentLoadedId
+            };
+            localStorage.setItem('k2_app_draft', JSON.stringify(draft));
+        }
+
+        function loadDraft() {
+            const draftStr = localStorage.getItem('k2_app_draft');
+            if(!draftStr) return false;
+
+            try {
+                const draft = JSON.parse(draftStr);
+                if(draft.fields) {
+                    currentLoadedId = draft.currentLoadedId || null;
+                    document.getElementById('in_no_form').value = draft.fields.no_form || '';
+                    document.getElementById('in_tanggal').value = draft.fields.tanggal || '';
+                    document.getElementById('in_dari').value = draft.fields.dari || '';
+                    document.getElementById('in_alamat').value = draft.fields.alamat || '';
+                    document.getElementById('in_varietas').value = draft.fields.varietas || '';
+                    document.getElementById('in_sejumlah').value = draft.fields.sejumlah || '';
+                    document.getElementById('in_kadar_air').value = draft.fields.kadar_air || '';
+                    document.getElementById('in_no_induk').value = draft.fields.no_induk || '';
+                    document.getElementById('in_no_blok').value = draft.fields.no_blok || '';
+                    document.getElementById('in_alat_panen').value = draft.fields.alat_panen || '';
+                    document.getElementById('in_no_pol').value = draft.fields.no_pol || '';
+
+                    document.getElementById('calcNoteTextarea').value = draft.fields.calc_text || '';
+                    if(draft.matrixData) matrixData = draft.matrixData;
+                    parseCalcNoteInput();
+
+                    document.getElementById('name-penimbang').value = draft.fields.name_penimbang || '';
+                    document.getElementById('name-manager').value = draft.fields.name_manager || '';
+                    document.getElementById('name-penyerah').value = draft.fields.name_penyerah || '';
+                    return true;
+                }
+            } catch(e) {
+                console.error("Failed to load draft:", e);
+            }
+            return false;
+        }
+
+        function clearDraft() {
+            localStorage.removeItem('k2_app_draft');
+        }
+
+        // COMPANY PROFILE CONFIGURATION
+        function loadCompanyConfig() {
+            const savedLogo = localStorage.getItem('k2_app_logo');
+            const savedName = localStorage.getItem('k2_app_company_name');
+            const savedSub = localStorage.getItem('k2_app_company_sub');
+
+            if(savedLogo) currentLogoDataUrl = savedLogo;
+            
+            const companyName = savedName || "CV. KARDIKA KRESNA";
+            const companySub = savedSub || "PRODUSEN BENIH TANAMAN PANGAN & HORTIKULTURA";
+
+            document.getElementById('headerTitle').textContent = companyName;
+            document.getElementById('printTitle').textContent = companyName;
+            document.getElementById('splashTitle').textContent = companyName;
+            document.getElementById('cfg_company_name').value = companyName;
+
+            document.getElementById('printSubTitle').textContent = companySub;
+            document.getElementById('splashSubTitle').textContent = companySub;
+            document.getElementById('cfg_company_sub').value = companySub;
+
+            updatePrintLogo();
+        }
+
+        function saveCompanyConfig() {
+            const name = document.getElementById('cfg_company_name').value;
+            const sub = document.getElementById('cfg_company_sub').value;
+            const fileInput = document.getElementById('logoFileInput');
+
+            if(name) {
+                localStorage.setItem('k2_app_company_name', name);
+                document.getElementById('headerTitle').textContent = name;
+                document.getElementById('printTitle').textContent = name;
+                document.getElementById('splashTitle').textContent = name;
+            }
+            if(sub) {
+                localStorage.setItem('k2_app_company_sub', sub);
+                document.getElementById('printSubTitle').textContent = sub;
+                document.getElementById('splashSubTitle').textContent = sub;
+            }
+
+            if(fileInput.files && fileInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    currentLogoDataUrl = e.target.result;
+                    localStorage.setItem('k2_app_logo', currentLogoDataUrl);
+                    updatePrintLogo();
+                    closeCustomLogoModal();
+                };
+                reader.readAsDataURL(fileInput.files[0]);
+            } else {
+                closeCustomLogoModal();
+            }
+        }
+
+        function updatePrintLogo() {
+            document.getElementById('headerLogo').src = currentLogoDataUrl;
+            document.getElementById('printLogo').src = currentLogoDataUrl;
+            document.getElementById('splashLogo').src = currentLogoDataUrl;
+        }
+
+        // STEPPER WIZARD NAVIGATION
+        function goToStep(step) {
+            currentStep = step;
+            
+            for(let i=1; i<=4; i++) {
+                const btn = document.getElementById(`step-btn-${i}`);
+                const kamar = document.getElementById(`kamar-${i}`);
+                
+                btn.className = "flex flex-col items-center p-2 sm:p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition ";
+                
+                if(i === step) {
+                    btn.className += "step-active";
+                } else if(i < step) {
+                    btn.className += "step-completed";
+                } else {
+                    btn.className += "text-slate-400";
+                }
+
+                if(i === step) {
+                    kamar.classList.remove('hidden');
+                } else {
+                    kamar.classList.add('hidden');
+                }
+            }
+
+            if(step === 3) {
+                setTimeout(resizeCanvases, 100);
+            }
+
+            if(step === 4) {
+                syncDataToPrintPreview();
+            }
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // GRID MATRIX & CALCNOTE FUNCTIONS
+        function initGridMatrix() {
+            const tbody = document.getElementById('gridMatrixBody');
+            tbody.innerHTML = '';
+
+            for(let r=0; r<10; r++) {
+                const tr = document.createElement('tr');
+                tr.className = "border-b border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-900/50";
+                
+                let html = `<td class="p-2 border-r border-slate-200 dark:border-slate-800 font-bold text-slate-500 dark:text-slate-400">${r+1}</td>`;
+                
+                for(let c=0; c<10; c++) {
+                    html += `<td class="p-1 border-r border-slate-200 dark:border-slate-800">
+                        <input type="number" id="cell-${r}-${c}" oninput="updateGridCell(${r}, ${c}, this.value)" 
+                        class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded text-center py-1 text-xs text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-none">
+                    </td>`;
+                }
+
+                html += `<td class="p-2 font-bold text-amber-600 dark:text-amber-400 text-right" id="subtotal-row-${r}">0</td>`;
+                tr.innerHTML = html;
+                tbody.appendChild(tr);
+            }
+        }
+
+        function updateGridCell(r, c, val) {
+            matrixData[r][c] = val !== '' ? parseFloat(val) || 0 : '';
+            calculateTotals();
+            syncGridToCalcNoteText();
+            saveDraft();
+        }
+
+        function switchInputMode(mode) {
+            const btnCalc = document.getElementById('btn-mode-calcnote');
+            const btnGrid = document.getElementById('btn-mode-grid');
+            const boxCalc = document.getElementById('container-mode-calcnote');
+            const boxGrid = document.getElementById('container-mode-grid');
+
+            if(mode === 'calcnote') {
+                btnCalc.className = "flex-1 py-2 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-2 bg-blue-600 text-white shadow";
+                btnGrid.className = "flex-1 py-2 rounded-lg text-xs font-semibold text-slate-500 dark:text-slate-400 transition flex items-center justify-center gap-2 hover:text-slate-800 dark:hover:text-slate-200";
+                boxCalc.classList.remove('hidden');
+                boxGrid.classList.add('hidden');
+            } else {
+                btnGrid.className = "flex-1 py-2 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-2 bg-blue-600 text-white shadow";
+                btnCalc.className = "flex-1 py-2 rounded-lg text-xs font-semibold text-slate-500 dark:text-slate-400 transition flex items-center justify-center gap-2 hover:text-slate-800 dark:hover:text-slate-200";
+                boxGrid.classList.remove('hidden');
+                boxCalc.classList.add('hidden');
+            }
+        }
+
+        function parseCalcNoteInput() {
+            const text = document.getElementById('calcNoteTextarea').value;
+            const lines = text.split('\n');
+
+            for(let r=0; r<10; r++) {
+                for(let c=0; c<10; c++) {
+                    matrixData[r][c] = '';
+                }
+            }
+
+            lines.forEach((line, r) => {
+                if(r >= 10) return;
+                const numbers = line.trim().split(/[\s+]+/).filter(v => v !== '' && !isNaN(v));
+                numbers.forEach((numStr, c) => {
+                    if(c < 10) {
+                        matrixData[r][c] = parseFloat(numStr) || 0;
+                    }
+                });
+            });
+
+            for(let r=0; r<10; r++) {
+                for(let c=0; c<10; c++) {
+                    const input = document.getElementById(`cell-${r}-${c}`);
+                    if(input) input.value = matrixData[r][c];
+                }
+            }
+
+            calculateTotals();
+        }
+
+        function syncGridToCalcNoteText() {
+            const lines = [];
+            for(let r=0; r<10; r++) {
+                const rowNums = matrixData[r].filter(v => v !== '' && v !== null);
+                if(rowNums.length > 0) {
+                    lines.push(rowNums.join(' + '));
+                }
+            }
+            document.getElementById('calcNoteTextarea').value = lines.join('\n');
+        }
+
+        function calculateTotals() {
+            let grandTotal = 0;
+            const previewContainer = document.getElementById('calcNotePreviewList');
+            previewContainer.innerHTML = '';
+
+            let hasData = false;
+
+            for(let r=0; r<10; r++) {
+                let rowSum = 0;
+                let rowValues = [];
+
+                for(let c=0; c<10; c++) {
+                    const val = matrixData[r][c];
+                    if(val !== '' && !isNaN(val)) {
+                        rowSum += parseFloat(val);
+                        rowValues.push(val);
+                    }
+                }
+
+                const subCell = document.getElementById(`subtotal-row-${r}`);
+                if(subCell) subCell.textContent = rowSum.toLocaleString('id-ID');
+
+                grandTotal += rowSum;
+
+                if(rowValues.length > 0) {
+                    hasData = true;
+                    const div = document.createElement('div');
+                    div.className = "flex justify-between items-center bg-white dark:bg-slate-900 px-3 py-1.5 rounded border border-slate-200 dark:border-slate-800";
+                    div.innerHTML = `<span class="text-slate-600 dark:text-slate-400">Baris ${r+1}: <span class="text-slate-800 dark:text-slate-200">${rowValues.join(' + ')}</span></span>
+                                     <span class="font-bold text-amber-600 dark:text-amber-400">${rowSum.toLocaleString('id-ID')}</span>`;
+                    previewContainer.appendChild(div);
+                }
+            }
+
+            if(!hasData) {
+                previewContainer.innerHTML = `<div class="text-slate-400 dark:text-slate-500 italic">Belum ada angka yang dimasukkan</div>`;
+            }
+
+            document.getElementById('grandTotalDisplay1').textContent = grandTotal.toLocaleString('id-ID') + ' Kg';
+        }
+
+        // SYNC DATA TO PRINTABLE PREVIEW
+        function syncDataToPrintPreview() {
+            document.getElementById('out_no_form').textContent = document.getElementById('in_no_form').value || 'FORM-0001';
+            document.getElementById('out_tanggal').textContent = document.getElementById('in_tanggal').value || '-';
+            document.getElementById('out_dari').textContent = document.getElementById('in_dari').value || '-';
+            document.getElementById('out_alamat').textContent = document.getElementById('in_alamat').value || '-';
+            document.getElementById('out_varietas').textContent = document.getElementById('in_varietas').value || '-';
+            document.getElementById('out_sejumlah').textContent = document.getElementById('in_sejumlah').value || '-';
+            document.getElementById('out_kadar_air').textContent = document.getElementById('in_kadar_air').value || '-';
+            document.getElementById('out_no_induk').textContent = document.getElementById('in_no_induk').value || '-';
+            document.getElementById('out_no_blok').textContent = document.getElementById('in_no_blok').value || '-';
+            document.getElementById('out_alat_panen').textContent = document.getElementById('in_alat_panen').value || '-';
+            document.getElementById('out_no_pol').textContent = document.getElementById('in_no_pol').value || '-';
+
+            const tbody = document.getElementById('printTableBody');
+            tbody.innerHTML = '';
+            let grandTotal = 0;
+
+            for(let r=0; r<10; r++) {
+                const tr = document.createElement('tr');
+                tr.className = "border-b border-black";
+                
+                let html = `<td class="border-r border-black p-1 font-bold">${r+1}</td>`;
+                let rowSum = 0;
+
+                for(let c=0; c<10; c++) {
+                    const val = matrixData[r][c];
+                    let displayVal = '';
+                    if(val !== '' && !isNaN(val)) {
+                        displayVal = val;
+                        rowSum += parseFloat(val);
+                    }
+                    html += `<td class="border-r border-black p-1">${displayVal}</td>`;
+                }
+
+                grandTotal += rowSum;
+                const displayRowSum = rowSum > 0 ? rowSum.toLocaleString('id-ID') : '';
+
+                html += `<td class="p-1 font-bold text-right pr-2">${displayRowSum}</td>`;
+                tr.innerHTML = html;
+                tbody.appendChild(tr);
+            }
+
+            document.getElementById('printGrandTotal').textContent = grandTotal.toLocaleString('id-ID');
+
+            const pName = document.getElementById('name-penimbang').value || '........................';
+            const mName = document.getElementById('name-manager').value || '........................';
+            const yName = document.getElementById('name-penyerah').value || '........................';
+
+            document.getElementById('txt-sign-penimbang').textContent = `( ${pName} )`;
+            document.getElementById('txt-sign-manager').textContent = `( ${mName} )`;
+            document.getElementById('txt-sign-penyerah').textContent = `( ${yName} )`;
+
+            exportSignatureImage('penimbang');
+            exportSignatureImage('manager');
+            exportSignatureImage('penyerah');
+        }
+
+        // FITUR 1: DIGITAL SIGNATURE PADS WITH VISUAL BADGE INDICATOR
+        function initSignatures() {
+            ['penimbang', 'manager', 'penyerah'].forEach(id => {
+                const canvas = document.getElementById(`canvas-${id}`);
+                const ctx = canvas.getContext('2d');
+                
+                signaturePads[id] = { canvas, ctx, isDrawing: false, hasStrokes: false };
+
+                function setupCanvas() {
+                    const rect = canvas.parentNode.getBoundingClientRect();
+                    canvas.width = rect.width;
+                    canvas.height = rect.height;
+                    ctx.strokeStyle = '#3b82f6';
+                    ctx.lineWidth = 2.5;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                }
+
+                setupCanvas();
+
+                function getPos(e) {
+                    const rect = canvas.getBoundingClientRect();
+                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                    return {
+                        x: clientX - rect.left,
+                        y: clientY - rect.top
+                    };
+                }
+
+                function startDrawing(e) {
+                    signaturePads[id].isDrawing = true;
+                    signaturePads[id].hasStrokes = true;
+                    updateSignatureBadge(id, true); // FITUR 1: Update Badge to Terisi
+                    const pos = getPos(e);
+                    ctx.beginPath();
+                    ctx.moveTo(pos.x, pos.y);
+                }
+
+                function draw(e) {
+                    if(!signaturePads[id].isDrawing) return;
+                    e.preventDefault();
+                    const pos = getPos(e);
+                    ctx.lineTo(pos.x, pos.y);
+                    ctx.stroke();
+                }
+
+                function stopDrawing() {
+                    if(signaturePads[id].isDrawing) {
+                        signaturePads[id].isDrawing = false;
+                        saveDraft();
+                    }
+                }
+
+                canvas.addEventListener('mousedown', startDrawing);
+                canvas.addEventListener('mousemove', draw);
+                canvas.addEventListener('mouseup', stopDrawing);
+                canvas.addEventListener('mouseleave', stopDrawing);
+
+                canvas.addEventListener('touchstart', startDrawing, {passive: false});
+                canvas.addEventListener('touchmove', draw, {passive: false});
+                canvas.addEventListener('touchend', stopDrawing);
+            });
+        }
+
+        // FITUR 1: UPDATE VISUAL BADGE STATUS TTD
+        function updateSignatureBadge(id, isFilled) {
+            const badge = document.getElementById(`badge-${id}`);
+            if(!badge) return;
+            
+            if(isFilled) {
+                badge.className = "text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 px-2 py-0.5 rounded-full flex items-center gap-1 font-bold border border-emerald-300 dark:border-emerald-800";
+                badge.innerHTML = `<i class="fa-solid fa-check text-[9px]"></i> Terisi`;
+            } else {
+                badge.className = "text-[10px] bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400 px-2 py-0.5 rounded-full flex items-center gap-1 font-medium";
+                badge.innerHTML = `<i class="fa-solid fa-circle text-[6px]"></i> Kosong`;
+            }
+        }
+
+        function resizeCanvases() {
+            ['penimbang', 'manager', 'penyerah'].forEach(id => {
+                const pad = signaturePads[id];
+                if(pad) {
+                    const rect = pad.canvas.parentNode.getBoundingClientRect();
+                    if(rect.width > 0) {
+                        const tempImg = pad.canvas.toDataURL();
+                        pad.canvas.width = rect.width;
+                        pad.canvas.height = rect.height;
+                        pad.ctx.strokeStyle = '#3b82f6';
+                        pad.ctx.lineWidth = 2.5;
+                        pad.ctx.lineCap = 'round';
+
+                        if(pad.hasStrokes) {
+                            const img = new Image();
+                            img.src = tempImg;
+                            img.onload = () => pad.ctx.drawImage(img, 0, 0);
+                        }
+                    }
+                }
+            });
+        }
+
+        function clearSignature(id) {
+            const pad = signaturePads[id];
+            if(pad) {
+                pad.ctx.clearRect(0, 0, pad.canvas.width, pad.canvas.height);
+                pad.hasStrokes = false;
+                updateSignatureBadge(id, false); // FITUR 1: Reset Badge Status
+                const img = document.getElementById(`img-sign-${id}`);
+                img.src = '';
+                img.classList.add('hidden');
+                saveDraft();
+            }
+        }
+
+        function exportSignatureImage(id) {
+            const pad = signaturePads[id];
+            const img = document.getElementById(`img-sign-${id}`);
+            if(pad && pad.hasStrokes) {
+                const dataUrl = pad.canvas.toDataURL('image/png');
+                img.src = dataUrl;
+                img.classList.remove('hidden');
+            } else {
+                img.classList.add('hidden');
+            }
+        }
+
+        // FITUR 6 & DATABASE: SAVE TRANSACTION & AUTO INCREMENT FORM NUMBER
+        function saveCurrentTransaction() {
+            const id = currentLoadedId || 'trx_' + Date.now();
+            const dateStr = document.getElementById('in_tanggal').value || new Date().toLocaleString();
+            const pengirim = document.getElementById('in_dari').value || 'Tanpa Nama';
+            const currentFormNo = document.getElementById('in_no_form').value;
+
+            const payload = {
+                id,
+                savedAt: new Date().toISOString(),
+                fields: {
+                    no_form: currentFormNo,
+                    tanggal: document.getElementById('in_tanggal').value,
+                    dari: document.getElementById('in_dari').value,
+                    alamat: document.getElementById('in_alamat').value,
+                    varietas: document.getElementById('in_varietas').value,
+                    sejumlah: document.getElementById('in_sejumlah').value,
+                    kadar_air: document.getElementById('in_kadar_air').value,
+                    no_induk: document.getElementById('in_no_induk').value,
+                    no_blok: document.getElementById('in_no_blok').value,
+                    alat_panen: document.getElementById('in_alat_panen').value,
+                    no_pol: document.getElementById('in_no_pol').value,
+                    calc_text: document.getElementById('calcNoteTextarea').value,
+                    name_penimbang: document.getElementById('name-penimbang').value,
+                    name_manager: document.getElementById('name-manager').value,
+                    name_penyerah: document.getElementById('name-penyerah').value
+                },
+                matrixData,
+                signs: {
+                    penimbang: signaturePads['penimbang']?.hasStrokes ? signaturePads['penimbang'].canvas.toDataURL() : null,
+                    manager: signaturePads['manager']?.hasStrokes ? signaturePads['manager'].canvas.toDataURL() : null,
+                    penyerah: signaturePads['penyerah']?.hasStrokes ? signaturePads['penyerah'].canvas.toDataURL() : null
+                }
+            };
+
+            let list = JSON.parse(localStorage.getItem('k2_app_history') || '[]');
+            const existingIdx = list.findIndex(item => item.id === id);
+            
+            if(existingIdx >= 0) {
+                list[existingIdx] = payload;
+            } else {
+                list.unshift(payload);
+                // FITUR 6: Auto Increment Form Number Sequence
+                let formSeq = parseInt(localStorage.getItem('k2_form_sequence') || '1');
+                localStorage.setItem('k2_form_sequence', (formSeq + 1).toString());
+            }
+
+            localStorage.setItem('k2_app_history', JSON.stringify(list));
+            currentLoadedId = id;
+            clearDraft(); // Clear temp draft upon successful save
+            alert(`✅ Transaksi ${currentFormNo} atas nama "${pengirim}" berhasil disimpan ke database riwayat!`);
+        }
+
+        // FITUR 3: RIWAYAT & SEARCH FILTER
+        function openHistoryModal() {
+            document.getElementById('historySearchInput').value = '';
+            renderHistoryList();
+            document.getElementById('historyModal').classList.remove('hidden');
+        }
+
+        function closeHistoryModal() {
+            document.getElementById('historyModal').classList.add('hidden');
+        }
+
+        function filterHistory() {
+            renderHistoryList();
+        }
+
+        function renderHistoryList() {
+            const container = document.getElementById('historyListContainer');
+            const searchKey = (document.getElementById('historySearchInput').value || '').toLowerCase();
+            const list = JSON.parse(localStorage.getItem('k2_app_history') || '[]');
+            
+            container.innerHTML = '';
+
+            const filtered = list.filter(item => {
+                const f = item.fields || {};
+                return (f.dari || '').toLowerCase().includes(searchKey) ||
+                       (f.varietas || '').toLowerCase().includes(searchKey) ||
+                       (f.tanggal || '').toLowerCase().includes(searchKey) ||
+                       (f.no_form || '').toLowerCase().includes(searchKey);
+            });
+
+            if(filtered.length === 0) {
+                container.innerHTML = `<div class="text-center text-slate-400 py-6">Tidak ada riwayat transaksi yang cocok.</div>`;
+            } else {
+                filtered.forEach((item) => {
+                    const div = document.createElement('div');
+                    div.className = "bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 flex items-center justify-between gap-3 hover:border-blue-500 transition";
+                    
+                    let totalWeight = 0;
+                    if(item.matrixData) {
+                        item.matrixData.forEach(row => row.forEach(val => { if(val) totalWeight += parseFloat(val); }));
+                    }
+
+                    div.innerHTML = `
+                        <div>
+                            <div class="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                                <span class="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 px-1.5 py-0.5 rounded text-[10px] mr-1">${item.fields.no_form || 'FORM'}</span>
+                                ${item.fields.dari || 'Pengirim Anonim'} - <span class="text-amber-600 dark:text-amber-400">${item.fields.varietas || '-'}</span>
+                            </div>
+                            <div class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                                <i class="fa-regular fa-calendar mr-1"></i>${item.fields.tanggal || '-'} | Total: <strong>${totalWeight.toLocaleString('id-ID')} Kg</strong>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <button onclick="loadTransaction('${item.id}')" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold">Muat / Edit</button>
+                            <button onclick="deleteTransaction('${item.id}')" class="bg-rose-100 dark:bg-rose-950/60 hover:bg-rose-200 dark:hover:bg-rose-800 text-rose-600 dark:text-rose-300 px-2.5 py-1.5 rounded-lg text-[10px] border border-rose-300 dark:border-rose-800/50"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    `;
+                    container.appendChild(div);
+                });
+            }
+        }
+
+        function loadTransaction(id) {
+            const list = JSON.parse(localStorage.getItem('k2_app_history') || '[]');
+            const item = list.find(x => x.id === id);
+            
+            if(item) {
+                currentLoadedId = item.id;
+
+                document.getElementById('in_no_form').value = item.fields.no_form || '';
+                document.getElementById('in_tanggal').value = item.fields.tanggal || '';
+                document.getElementById('in_dari').value = item.fields.dari || '';
+                document.getElementById('in_alamat').value = item.fields.alamat || '';
+                document.getElementById('in_varietas').value = item.fields.varietas || '';
+                document.getElementById('in_sejumlah').value = item.fields.sejumlah || '';
+                document.getElementById('in_kadar_air').value = item.fields.kadar_air || '';
+                document.getElementById('in_no_induk').value = item.fields.no_induk || '';
+                document.getElementById('in_no_blok').value = item.fields.no_blok || '';
+                document.getElementById('in_alat_panen').value = item.fields.alat_panen || '';
+                document.getElementById('in_no_pol').value = item.fields.no_pol || '';
+
+                document.getElementById('calcNoteTextarea').value = item.fields.calc_text || '';
+                if(item.matrixData) matrixData = item.matrixData;
+                parseCalcNoteInput();
+
+                document.getElementById('name-penimbang').value = item.fields.name_penimbang || '';
+                document.getElementById('name-manager').value = item.fields.name_manager || '';
+                document.getElementById('name-penyerah').value = item.fields.name_penyerah || '';
+
+                // Restore Signatures if available
+                ['penimbang', 'manager', 'penyerah'].forEach(sId => {
+                    clearSignature(sId);
+                    if(item.signs && item.signs[sId]) {
+                        const pad = signaturePads[sId];
+                        const img = new Image();
+                        img.src = item.signs[sId];
+                        img.onload = () => {
+                            pad.ctx.drawImage(img, 0, 0);
+                            pad.hasStrokes = true;
+                            updateSignatureBadge(sId, true);
+                        };
+                    }
+                });
+
+                closeHistoryModal();
+                goToStep(1);
+            }
+        }
+
+        function deleteTransaction(id) {
+            if(confirm("Apakah Anda yakin ingin menghapus transaksi ini dari riwayat?")) {
+                let list = JSON.parse(localStorage.getItem('k2_app_history') || '[]');
+                list = list.filter(x => x.id !== id);
+                localStorage.setItem('k2_app_history', JSON.stringify(list));
+                renderHistoryList();
+            }
+        }
+
+        // FITUR 4: EKSPOR LAPORAN SEBAGAI GAMBAR PNG (html2canvas)
+        function exportToPNG() {
+            const printElement = document.getElementById('printableArea');
+            const noForm = document.getElementById('in_no_form').value || 'FORM';
+            
+            alert("Mengolah gambar PNG... Mohon tunggu sebentar.");
+
+            html2canvas(printElement, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#ffffff'
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `Nota_Timbangan_${noForm}_${Date.now()}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            }).catch(err => {
+                alert("Gagal mengunduh gambar PNG: " + err.message);
+            });
+        }
+
+        // FITUR 4: BACKUP & RESTORE FILE JSON DATABASE
+        function exportJSONBackup() {
+            const history = localStorage.getItem('k2_app_history') || '[]';
+            const companyName = localStorage.getItem('k2_app_company_name') || 'CV. KARDIKA KRESNA';
+            const logo = localStorage.getItem('k2_app_logo') || '';
+            const seq = localStorage.getItem('k2_form_sequence') || '1';
+
+            const backupData = {
+                appName: "KalkulatorTimbanganK2",
+                backupDate: new Date().toISOString(),
+                companyName,
+                logo,
+                sequence: seq,
+                history: JSON.parse(history)
+            };
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `Backup_Data_Timbangan_${Date.now()}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function importJSONBackup(event) {
+            const file = event.target.files[0];
+            if(!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if(data.history && Array.isArray(data.history)) {
+                        localStorage.setItem('k2_app_history', JSON.stringify(data.history));
+                        if(data.companyName) localStorage.setItem('k2_app_company_name', data.companyName);
+                        if(data.logo) localStorage.setItem('k2_app_logo', data.logo);
+                        if(data.sequence) localStorage.setItem('k2_form_sequence', data.sequence);
+
+                        loadCompanyConfig();
+                        renderHistoryList();
+                        alert("✅ Database riwayat berhasil dipulihkan (Restore) dari file JSON!");
+                    } else {
+                        alert("Format file JSON tidak valid.");
+                    }
+                } catch(err) {
+                    alert("Gagal membaca file JSON: " + err.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // EKSPOR EXCEL CSV
+        function exportToExcel() {
+            let csv = [];
+            csv.push(['DATA TIMBANGAN MASUK']);
+            csv.push(['Perusahaan', document.getElementById('headerTitle').textContent]);
+            csv.push(['No. Form', document.getElementById('in_no_form').value]);
+            csv.push(['Tanggal', document.getElementById('in_tanggal').value]);
+            csv.push(['Dari', document.getElementById('in_dari').value]);
+            csv.push(['Komoditas/Varietas', document.getElementById('in_varietas').value]);
+            csv.push(['Sejumlah Karung', document.getElementById('in_sejumlah').value]);
+            csv.push([]);
+            
+            csv.push(['NO', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'JUMLAH']);
+
+            for(let r=0; r<10; r++) {
+                let row = [r+1];
+                let sum = 0;
+                for(let c=0; c<10; c++) {
+                    const val = matrixData[r][c] !== '' ? matrixData[r][c] : '';
+                    row.push(val);
+                    if(val !== '') sum += parseFloat(val);
+                }
+                row.push(sum);
+                csv.push(row.join(','));
+            }
+
+            const csvString = csv.join('\n');
+            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute("download", `Data_Timbangan_${document.getElementById('in_no_form').value}_${Date.now()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // MODAL TOGGLERS
+        function openCustomLogoModal() { document.getElementById('customLogoModal').classList.remove('hidden'); }
+        function closeCustomLogoModal() { document.getElementById('customLogoModal').classList.add('hidden'); }
+
+        // RESET ALL FORM
+        function resetAllForm() {
+            if(confirm("Apakah Anda yakin ingin membuat formulir baru? (Formulir saat ini akan dikosongkan)")) {
+                currentLoadedId = null;
+                clearDraft();
+                
+                document.querySelectorAll('input:not(#cfg_company_name):not(#cfg_company_sub)').forEach(i => i.value = '');
+                document.getElementById('calcNoteTextarea').value = '';
+                
+                for(let r=0; r<10; r++) {
+                    for(let c=0; c<10; c++) matrixData[r][c] = '';
+                }
+
+                parseCalcNoteInput();
+                clearSignature('penimbang');
+                clearSignature('manager');
+                clearSignature('penyerah');
+                
+                initFreshForm(); // Re-initialize Form No and Date
+                goToStep(1);
+            }
+        }
+    </script>
+</body>
+</html>
